@@ -39,6 +39,7 @@ class Oca
 {
 	const VERSION				= '0.1.1';
 	protected $webservice_url	= 'webservice.oca.com.ar';
+	const CURL_DEFAULT_TIMEOUT = 360;
 
 	const FRANJA_HORARIA_8_17HS = 1;
 	const FRANJA_HORARIA_8_12HS = 2;
@@ -46,6 +47,8 @@ class Oca
 
 	private $Cuit;
 	private $Operativa;
+	private $curl_opt_arr;
+
 
 	// ========================================================================
 
@@ -53,6 +56,36 @@ class Oca
 	{
 		$this->Cuit 		= trim($cuit);
 		$this->Operativa 	= trim($operativa);
+
+		$this->setCurlOptArr(array(	
+									CURLOPT_RETURNTRANSFER	=> TRUE,
+									CURLOPT_HEADER			=> FALSE,
+									CURLOPT_USERAGENT		=> $this->setUserAgent(),
+									CURLOPT_CONNECTTIMEOUT	=> 5,
+									CURLOPT_TIMEOUT			=> Self::CURL_DEFAULT_TIMEOUT,
+									// CURLOPT_POST			=> TRUE,
+									// CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
+									// CURLOPT_URL				=> "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/Tarifar_Envio_Corporativo",
+									CURLOPT_FOLLOWLOCATION	=> TRUE
+									));
+	}
+
+	/**
+	*	obtiene las opciones de cUrl por defecto
+	*	@return Array
+	*/
+	public function getCurlOptsArr()
+	{
+		return $this->curl_opt_arr;
+	}
+
+	/**
+	*	Setea las opciones de cUrl por defecto
+	*	@param Array $curl_arr
+	*	@return void
+	*/
+	public function setCurlOptArr($curl_arr){
+		$this->curl_opt_arr = $curl_arr;
 	}
 
 	public function getOperativa()
@@ -113,14 +146,12 @@ class Oca
 
 		$ch = curl_init();
 		
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POST			=> TRUE,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_URL				=> "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/Tarifar_Envio_Corporativo",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+		$curl_opt_arr = $this->getCurlOptsArr();
+		$curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/Tarifar_Envio_Corporativo";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		$dom = new DOMDocument();
 		@$dom->loadXML(curl_exec($ch));
@@ -158,15 +189,13 @@ class Oca
 							);
 
 		$ch = curl_init();
-		
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POST			=> TRUE,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_URL				=> "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/List_Envios",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+
+		$curl_opt_arr = $this->getCurlOptsArr();
+		$curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/List_Envios";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		$dom = new DOMDocument();
 		@$dom->loadXML(curl_exec($ch));
@@ -203,22 +232,26 @@ class Oca
 
 		$ch = curl_init();
 		
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POST			=> TRUE,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_URL				=> "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/Tracking_Pieza",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+		$curl_opt_arr = $this->getCurlOptsArr();
+		$curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/Tracking_Pieza";
+
+		curl_setopt_array($ch, $curl_opt_arr);
+
 		$dom = new DOMDocument();
 		@$dom->loadXML(curl_exec($ch));
 		$xpath = new DOMXpath($dom);	
-		
 		$envio = array();
 		foreach (@$xpath->query("//NewDataSet/Table") as $tp)
 		{
-			$envio[] = array();
+			
+			$envio[] = array("NumeroEnvio"=>$tp->getElementsByTagName('NumeroEnvio')->item(0)->nodeValue,
+								"Descripcion_Motivo"=>$tp->getElementsByTagName('Descripcion_Motivo')->item(0)->nodeValue,
+								"Desdcripcion_Estado"=>$tp->getElementsByTagName('Desdcripcion_Estado')->item(0)->nodeValue,
+								"SUC"=>$tp->getElementsByTagName('SUC')->item(0)->nodeValue,
+								"fecha"=>$tp->getElementsByTagName('fecha')->item(0)->nodeValue,
+							);
 		}
 		
 		return $envio;
@@ -237,16 +270,18 @@ class Oca
 	{
 		if ( ! $CP) return;
 		
+		$_query_string = array(	
+							'CodigoPostal'					=> (int)$CP,
+							);
+
 		$ch = curl_init();
 		
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POST			=> TRUE,
-										CURLOPT_POSTFIELDS		=> 'CodigoPostal='.(int)$CP,
-										CURLOPT_URL				=> "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetCentrosImposicionPorCP",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+		$curl_opt_arr = $this->getCurlOptsArr();
+		$curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetCentrosImposicionPorCP";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		$dom = new DOMDocument();
 		@$dom->loadXML(curl_exec($ch));
@@ -287,13 +322,11 @@ class Oca
 	public function getCentrosImposicion()
 	{
 		$ch = curl_init();
-		
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_URL				=> "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetCentrosImposicion",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+
+		$curl_opt_arr = $this->getCurlOptsArr();
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetCentrosImposicion";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		$dom = new DOMDocument();
 		@$dom->loadXML(curl_exec($ch));
@@ -325,12 +358,12 @@ class Oca
 	public function getProvincias()
 	{
 		$ch = curl_init();
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_URL				=> "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetProvincias",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+
+		$curl_opt_arr = $this->getCurlOptsArr();
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetProvincias";
+
+		curl_setopt_array($ch, $curl_opt_arr);
+
 		$dom = new DOMDocument();
 		$dom->loadXml(curl_exec($ch));
 		$xpath = new DOMXPath($dom);
@@ -359,13 +392,14 @@ class Oca
 		$_query_string = array('idProvincia' => $idProvincia);
 		
 		$ch = curl_init();
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_URL				=> "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetLocalidadesByProvincia",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+
+		$curl_opt_arr = $this->getCurlOptsArr();
+		// $curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetLocalidadesByProvincia";
+
+		curl_setopt_array($ch, $curl_opt_arr);
+
 		$dom = new DOMDocument();
 		$dom->loadXml(curl_exec($ch));
 		$xpath = new DOMXPath($dom);
@@ -404,13 +438,13 @@ class Oca
 			);
 
 		$ch = curl_init();
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_URL				=> "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/IngresoOR",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+
+		$curl_opt_arr = $this->getCurlOptsArr();
+		// $curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/IngresoOR";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		$xml = curl_exec($ch);
 		file_put_contents('ingresoOr.xml', $xml);
@@ -475,13 +509,13 @@ class Oca
 			);
 
 		$ch = curl_init();
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_URL				=> "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/IngresoORMultiplesRetiros",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+
+		$curl_opt_arr = $this->getCurlOptsArr();
+		// $curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/IngresoORMultiplesRetiros";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		$xml = curl_exec($ch);
 		file_put_contents('ingresoORMultiplesRetiros.xml', $xml);
@@ -542,13 +576,13 @@ class Oca
 			);
 
 		$ch = curl_init();
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_URL				=> "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetCentroCostoPorOperativa",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+
+		$curl_opt_arr = $this->getCurlOptsArr();
+		// $curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetCentroCostoPorOperativa";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		$dom = new DOMDocument();
 		@$dom->loadXml(curl_exec($ch));
@@ -595,13 +629,13 @@ class Oca
 			);
 
 		$ch = curl_init();
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_URL				=> "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/AnularOrdenGenerada",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+
+		$curl_opt_arr = $this->getCurlOptsArr();
+		// $curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/AnularOrdenGenerada";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		$xml = curl_exec($ch);
 		file_put_contents('anularOrdenGenerada.xml', $xml);
@@ -642,13 +676,13 @@ class Oca
 			);
 
 		$ch = curl_init();
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_URL				=> "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/List_Envios",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+
+		$curl_opt_arr = $this->getCurlOptsArr();
+		// $curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/epak_tracking/Oep_TrackEPak.asmx/List_Envios";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		$dom = new DOMDocument();
 		@$dom->loadXml(curl_exec($ch));
@@ -685,13 +719,13 @@ class Oca
 			);
 
 		$ch = curl_init();
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_URL				=> "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetHtmlDeEtiquetasPorOrdenOrNumeroEnvio",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+		
+		$curl_opt_arr = $this->getCurlOptsArr();
+		// $curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetHtmlDeEtiquetasPorOrdenOrNumeroEnvio";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		return curl_exec($ch);
 	}
@@ -716,13 +750,13 @@ class Oca
 			);
 
 		$ch = curl_init();
-		curl_setopt_array($ch,	array(	CURLOPT_RETURNTRANSFER	=> TRUE,
-										CURLOPT_HEADER			=> FALSE,
-										CURLOPT_CONNECTTIMEOUT	=> 5,
-										CURLOPT_POSTFIELDS		=> http_build_query($_query_string),
-										CURLOPT_USERAGENT		=> $this->setUserAgent(),
-										CURLOPT_URL				=> "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetPDFDeEtiquetasPorOrdenOrNumeroEnvio",
-										CURLOPT_FOLLOWLOCATION	=> TRUE));
+		
+		$curl_opt_arr = $this->getCurlOptsArr();
+		// $curl_opt_arr[CURLOPT_POST] 		= true;
+		$curl_opt_arr[CURLOPT_POSTFIELDS] 	= http_build_query($_query_string);
+		$curl_opt_arr[CURLOPT_URL] 			= "{$this->webservice_url}/oep_tracking/Oep_Track.asmx/GetPDFDeEtiquetasPorOrdenOrNumeroEnvio";
+
+		curl_setopt_array($ch, $curl_opt_arr);
 
 		return base64_decode(curl_exec($ch));
 	}
