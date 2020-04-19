@@ -1,12 +1,12 @@
 {
-    "name": "juanchorossi/oca-php-api",
+    "name": "guillebalmacedaonline/OCA-PHP-API-LARAVEL",
     "description": "PHP class for OCA Express Pak",
-    "keywords": ["oca", "oca express pak"],
+    "keywords": ["oca", "oca express pak", "Laravel OCA", "oca laravel", "laravel"],
     "license": "GPL-3.0+",
     "authors": [
         {
-            "name": "Juancho Rossi",
-            "email": "juanchorossi@gmail.com"
+            "name": "Guillermo Federico Balmaceda",
+            "email": "guillebalmacedaonline@gmail.com"
         }
     ],
     "require": {},
